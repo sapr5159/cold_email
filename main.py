@@ -13,10 +13,15 @@ def create_streamlit_app(llm, portfolio, clean_text):
 
     if submit_button:
         try:
+            print("Done")
             loader = WebBaseLoader([url_input])
+            print("Done")
             data = clean_text(loader.load().pop().page_content)
+            print("Done")
             portfolio.load_portfolio()
+            print("Done")
             jobs = llm.extract_jobs(data)
+            print("Done")
             for job in jobs:
                 skills = job.get('skills', [])
                 links = portfolio.query_links(skills)

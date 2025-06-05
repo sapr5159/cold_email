@@ -11,11 +11,8 @@ class Portfolio:
         self.collection = self.chroma_client.get_or_create_collection(name="portfolio")
 
     def load_portfolio(self):
-        print("-", self.collection)
         if not self.collection.count():
-            print("-")
             for _, row in self.data.iterrows():
-                print("-")
                 self.collection.add(documents=row["Techstack"],
                                     metadatas={"links": row["Links"]},
                                     ids=[str(uuid.uuid4())])

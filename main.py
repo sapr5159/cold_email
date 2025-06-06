@@ -4,7 +4,7 @@ from langchain_community.document_loaders import WebBaseLoader
 
 from chains import Chain
 from portfolio import Portfolio
-from utils import clean_text, extract_text_from_resume, extract_resume_sections, extract_skills_from_text
+from utils import clean_text, extract_text_from_resume, calculate_fit_percentage
 
 
 def create_streamlit_app(portfolio, clean_text):
@@ -38,12 +38,11 @@ def create_streamlit_app(portfolio, clean_text):
             data = clean_text(loader.load().pop().page_content)
             # portfolio.load_portfolio()
             resume_text = extract_text_from_resume(resume_file)
-            st.subheader("📌 Resume Preview")
-            st.text_area("Extracted Text", resume_text, height=300)
+            # st.subheader("📌 Resume Preview")
+            # st.text_area("Extracted Text", resume_text, height=300)
 
             parsed_resume = llm.extract_resume_sections(resume_text)
-            st.json(parsed_resume)
-
+            # st.json(parsed_resume)
             skills = parsed_resume.get("skills", [])
             st.subheader("Top Skills")
             for skill in skills:
@@ -59,8 +58,29 @@ def create_streamlit_app(portfolio, clean_text):
             # st.success(", ".join(skills) if skills else "No known skills found.")
 
             jobs = llm.extract_jobs(data)
+
             for job in jobs:
-                # skills = job.get('skills', [])
+                job_skills = job.get('skills', [])
+                fit_score, matched = calculate_fit_percentage(skills, job_skills)
+                skill_match = llm.skill_matching(skills, job_skills)
+                st.subheader(f"📋 Job Role: {job.get('role', 'N/A')}")
+                st.metric(label="🎯 Skill Fit Percentage", value=f"{skill_match.get('fit_percentage', 0)}%")
+                matched_skills = skill_match.get('matched_skills', [])
+                if matched_skills:
+                    st.caption(f"✅ Matched Skills: {', '.join(matched_skills)}")
+                else:
+                    st.caption("⚠️ No matched skills found.")
+                if skill_match.get('fit_percentage', 0) < 50:
+                    st.warning(f"⚠️ Low Fit Score: {fit_score}%")
+                    improvise = llm.improve_resume(
+                        resume_text=resume_text,
+                        job_description=job.get('description', ''),
+                        job_skills=job_skills
+                    )
+                    st.subheader("📝 Suggested Improvements")
+                    st.code(improvise, language="markdown")
+                else:
+                    st.success(f"✅ High Fit Score: {fit_score}%")
                 # links = portfolio.query_links(skills)
                 # email = llm.write_mail(job, links)
                 email = llm.write_mail(job, resume_text=resume_text)

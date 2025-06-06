@@ -22,7 +22,13 @@ class Chain:
             {page_data}
             ### INSTRUCTION:
             The scraped text is from the career's page of a website.
-            Your job is to extract the job postings and return them in JSON format containing the following keys: `role`, `experience`, `skills` and `description`.
+            Each job posting should include the following keys:
+            - `role`
+            - `experience`
+            - `description`
+            - `skills`: a **JSON list** of atomic, technical skills like ["Python", "TensorFlow", "Docker"]
+
+            For `skills`, parse from both job description and skill requirements.
             Only return the valid JSON.
             ### VALID JSON (NO PREAMBLE):
             """
@@ -107,6 +113,71 @@ class Chain:
         parser = JsonOutputParser()
         return parser.parse(response.content)
 
+    def skill_matching(self, resume_skills, job_skills):
+            prompt_extract = PromptTemplate.from_template(
+                """
+                ### SKILLS FROM RESUME:
+                {resume_skills}
+                ### SKILLS FROM JOB DESCRIPTION:
+                {job_skills}
+                ### INSTRUCTION:
+                Calculate the percentage of skills from the resume that match the job description.
+                Return a JSON object with the following keys:
+                - `fit_percentage`: the percentage of skills from the resume that match the job description.
+                - `matched_skills`: a list of skills that matched.
+                Do not add any preamble, headings, or external commentary.
+                ### FORMAT:
+                {{
+                    "fit_percentage": 85,
+                    "matched_skills": ["Python", "TensorFlow", "Docker"]
+                }}
+                ONLY return valid JSON.
+                """
+            )
+            chain_extract = prompt_extract | self.llm
+            res = chain_extract.invoke(input={"resume_skills": resume_skills, "job_skills": job_skills})
+            try:
+                json_parser = JsonOutputParser()
+                res = json_parser.parse(res.content)
+            except OutputParserException:
+                raise OutputParserException("Context too big. Unable to parse jobs.")
+            return res
+    def improve_resume(self, resume_text, job_description, job_skills):
+        prompt_improve = PromptTemplate.from_template(
+            """
+            ### JOB DESCRIPTION:
+            {job_description}
+            ### JOB SKILLS:
+            {job_skills}
+
+            ### RESUME:
+            {resume_text}
+
+            ### INSTRUCTION:
+            Identify missing or weakly represented job skills in the resume. Suggest exact changes to the resume to improve the match, such as:
+            - Rewording existing bullets to better align
+            - Adding new projects/skills (if relevant)
+            - Reordering sections for impact
+            Do not add any preamble, headings, or external commentary.
+            ### FORMAT:
+            {{
+                "missing_skills": ["Python", "TensorFlow"],
+                "suggested_changes": [
+                    "Add a project on machine learning with TensorFlow",
+                    "Reword the Python experience to highlight data analysis"
+                ]
+            }}
+
+            """
+        )
+        chain_improve = prompt_improve | self.llm
+        res = chain_improve.invoke(input={"resume_text": resume_text, "job_description": job_description,"job_skills": job_skills})
+        try:
+                json_parser = JsonOutputParser()
+                res = json_parser.parse(res.content)
+        except OutputParserException:
+                raise OutputParserException("Context too big. Unable to parse jobs.")
+        return res
 
 if __name__ == "__main__":
     print(os.getenv("GROQ_API_KEY"))

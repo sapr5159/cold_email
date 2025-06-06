@@ -105,3 +105,11 @@ def extract_skills_from_text(text):
         if skill in text_lower:
             found_skills.append(skill)
     return sorted(set(found_skills))
+
+def calculate_fit_percentage(resume_skills, job_skills):
+    resume_skills_set = set(skill.lower() for skill in resume_skills)
+    job_skills_set = set(skill.lower() for skill in job_skills)
+
+    matched = resume_skills_set.intersection(job_skills_set)
+    fit_score = len(matched) / len(job_skills_set) * 100 if job_skills_set else 0
+    return round(fit_score, 2), list(matched)

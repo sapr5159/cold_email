@@ -13,7 +13,7 @@ class Chain:
         #     os.environ["GROQ_API_KEY"] = api_key
         # elif not os.getenv("GROQ_API_KEY"):
         #     raise ValueError("GROQ_API_KEY must be set either as an environment variable or passed as an argument.")
-        self.llm = ChatGroq(temperature=0, groq_api_key=os.getenv("GROQ_API_KEY"), model_name="llama-3.3-70b-versatile")
+        self.llm = ChatGroq(temperature=0, groq_api_key=os.getenv("GROQ_API_KEY"), model_name="meta-llama/llama-4-maverick-17b-128e-instruct")
 
     def extract_jobs(self, cleaned_text):
         prompt_extract = PromptTemplate.from_template(
@@ -178,6 +178,117 @@ class Chain:
         except OutputParserException:
                 raise OutputParserException("Context too big. Unable to parse jobs.")
         return res
+    def explain_skill_match(self, resume_text, job_skills):
+        prompt = PromptTemplate.from_template(
+            """
+            ### RESUME TEXT:
+            {resume_text}
+
+            ### JOB SKILLS:
+            {job_skills}
+
+            ### INSTRUCTION:
+            Identify which of the job-required skills are present in the resume and where they are mentioned
+            (e.g., Skills section, Project section, Experience line, etc.).
+
+            Also identify which job-required skills are missing, and provide suggestions on how they could be added or better represented.
+
+            Return a valid JSON with:
+            {{
+                "matched_skills": [
+                    {{"skill": "Python", "location": "Skills section"}},
+                    {{"skill": "TensorFlow", "location": "Project: CNN Image Classifier"}}
+                ],
+                "unmatched_skills": [
+                    {{"skill": "JAX", "suggestion": "Add a project using JAX or mention online coursework"}},
+                    {{"skill": "Numerical Optimization", "suggestion": "Mention relevant optimization techniques used in projects"}}
+                ]
+            }}
+
+            ONLY return valid JSON.
+            """
+        )
+
+
+        chain = prompt | self.llm
+        result = chain.invoke({"resume_text": resume_text, "job_skills": job_skills})
+
+        try:
+            json_parser = JsonOutputParser()
+            result = json_parser.parse(result.content)
+        except Exception as e:
+            raise RuntimeError(f"Failed to parse skill match explanation: {e}")
+        return result
+    def improve_resume(self, resume_text, job_description, job_skills):
+        prompt = PromptTemplate.from_template(
+            """
+            ### RESUME TEXT:
+            {resume_text}
+
+            ### JOB DESCRIPTION:
+            {job_description}
+
+            ### JOB SKILLS:
+            {job_skills}
+
+            ### INSTRUCTION:
+            Analyze the resume in context of the job. Suggest specific improvements:
+            - List missing but relevant skills that should be added
+            - Suggest rewording of any vague or generic lines
+            - Identify if any new sections (e.g., projects, certifications) should be added
+
+            Return structured JSON like:
+            {{
+                "missing_skills": ["JAX", "Numerical Optimization"],
+                "suggested_changes": [
+                    "Mention JAX in project section using a small case study.",
+                    "Reword 'Worked on AI projects' to 'Built a CNN using PyTorch for image classification'."
+                ],
+                "new_section_ideas": ["Add a project using distributed computing tools like Spark"]
+            }}
+
+            Only return valid JSON.
+            """
+        )
+        chain = prompt | self.llm
+        response = chain.invoke({
+            "resume_text": resume_text,
+            "job_description": job_description,
+            "job_skills": job_skills
+        })
+        try:
+            parser = JsonOutputParser()
+            return parser.parse(response.content)
+        except Exception as e:
+            raise RuntimeError(f"Unable to parse resume improvement suggestions: {e}")
+    def analyze_resume_categories(self, resume_text, skills_list):
+        categories = {
+            "Technical Skills": 0,
+            "Tools & Frameworks": 0,
+            "Cloud Experience": 0,
+            "NLP / LLM Relevance": 0,
+            "Soft Skills": 0,
+            "Projects": 0
+        }
+
+        resume_lower = resume_text.lower()
+
+        # Define category-specific keywords
+        tools = ["tensorflow", "pytorch", "keras", "docker", "git", "onnx", "scikit", "opencv"]
+        cloud = ["aws", "azure", "gcp", "google cloud", "s3", "lambda"]
+        nlp = ["nlp", "bert", "gpt", "llm", "langchain", "transformers"]
+        soft = ["communication", "leadership", "collaboration", "team", "initiative"]
+        
+        # Count matches
+        categories["Technical Skills"] = len(skills_list)
+        categories["Tools & Frameworks"] = sum(t in resume_lower for t in tools)
+        categories["Cloud Experience"] = sum(c in resume_lower for c in cloud)
+        categories["NLP / LLM Relevance"] = sum(n in resume_lower for n in nlp)
+        categories["Soft Skills"] = sum(s in resume_lower for s in soft)
+        categories["Projects"] = resume_lower.count("project")  # basic proxy
+
+        return categories
+
 
 if __name__ == "__main__":
     print(os.getenv("GROQ_API_KEY"))

@@ -6,6 +6,7 @@ from chains import Chain
 from portfolio import Portfolio
 from utils import clean_text, extract_text_from_resume
 import plotly.graph_objects as go
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 def show_resume_radar_chart(category_scores):
     labels = list(category_scores.keys())

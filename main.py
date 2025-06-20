@@ -3,7 +3,7 @@ import os
 from langchain_community.document_loaders import WebBaseLoader
 
 from chains import Chain
-from portfolio import Portfolio
+# from portfolio import Portfolio
 from utils import clean_text, extract_text_from_resume
 import plotly.graph_objects as go
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -205,5 +205,5 @@ def create_streamlit_app():
 
 
 if __name__ == "__main__":
-    portfolio = Portfolio()  # kept for future portfolio querying if needed
+    # portfolio = Portfolio()  # kept for future portfolio querying if needed
     create_streamlit_app()

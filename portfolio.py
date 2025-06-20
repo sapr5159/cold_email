@@ -1,7 +1,8 @@
 import pandas as pd
 import chromadb
 import uuid
-
+import os
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 class Portfolio:
     def __init__(self, file_path="resource/my_portfolio.csv"):

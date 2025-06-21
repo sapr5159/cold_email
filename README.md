@@ -19,12 +19,6 @@
 
 ---
 
-## 🖥 Demo Preview
-
-*(replace with your own screenshot or GIF)*
-
----
-
 ## 📂 Folder Structure
 
 ```
@@ -54,7 +48,7 @@ This app uses the **Groq API** via `langchain-groq`. You must provide your key o
 
 ```bash
 # Clone this repo
-[https://github.com/sapr5159/cold_email.git](https://github.com/sapr5159/cold_email.git)
+https://github.com/sapr5159/cold_email.git
 cd resuintelgenerator
 
 # Create virtual env

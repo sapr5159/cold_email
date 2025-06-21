@@ -41,7 +41,7 @@ def create_streamlit_app():
         page_title="Cold Email Generator",
         page_icon="📧",
     )
-    st.title("Cold Mail Generator")
+    st.title("ResuIntelGenAI: Smart Cold Emails with Resume + Job Match Intelligence")
 
     # --- Sidebar: API key --- #
     # with st.sidebar:
